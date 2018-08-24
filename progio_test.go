@@ -30,3 +30,43 @@ func TestWriter(t *testing.T) {
 
 	gotwant.Test(t, buf.String(), "hoge")
 }
+
+func BenchmarkRead(b *testing.B) {
+	org := make([]byte, 0, 10*10000)
+	for i := 0; i < 10000; i++ {
+		org = append(org, []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}...)
+	}
+	b.ResetTimer()
+
+	b.Run("std", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			r := bytes.NewBuffer(org)
+			ioutil.ReadAll(r)
+		}
+	})
+
+	b.Run("NullThrottling", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			r := progio.NewReader(bytes.NewBuffer(org), func(p int64) {
+			})
+			ioutil.ReadAll(r)
+		}
+	})
+
+	b.Run("Percent", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			r := progio.NewReader(bytes.NewBuffer(org), func(p int64) {
+				//rog.Print(p)
+			}, progio.Percent(10*10000, 5))
+			ioutil.ReadAll(r)
+		}
+	})
+
+	b.Run("Time", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			r := progio.NewReader(bytes.NewBuffer(org), func(p int64) {
+			}, progio.Time(10))
+			ioutil.ReadAll(r)
+		}
+	})
+}
