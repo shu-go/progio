@@ -5,24 +5,24 @@ import "io"
 // Reader a progress watcher and a wrapper for io.Reader.
 type Reader struct {
 	io.Reader
-	Handler func(progress int64)
 
-	Throttler Throttler
+	handler   func(progress int64)
+	throttler Throttler
 
 	progress int64
 }
 
 // NewReader creates a Reader with handler to handle progress.
-// configs is currently used to set Throttler property.
-func NewReader(src io.Reader, handler func(progress int64), configs ...RWConfig) *Reader {
+// optThrottler is used to throttle handler call.
+func NewReader(src io.Reader, handler func(progress int64), optThrottler ...Throttler) *Reader {
 	r := &Reader{
 		Reader:    src,
-		Handler:   handler,
-		Throttler: &nullThrottling{},
+		handler:   handler,
+		throttler: &nullThrottling{},
 	}
 
-	for _, c := range configs {
-		c(r)
+	if len(optThrottler) > 0 || optThrottler[0] != nil {
+		r.throttler = optThrottler[0]
 	}
 
 	return r
@@ -33,6 +33,6 @@ func NewReader(src io.Reader, handler func(progress int64), configs ...RWConfig)
 func (r *Reader) Read(p []byte) (n int, err error) {
 	nn, ee := r.Reader.Read(p)
 	r.progress += int64(nn)
-	r.Throttler.CallHandler(r.Handler, r.progress)
+	r.throttler.CallHandler(r.handler, r.progress)
 	return nn, ee
 }

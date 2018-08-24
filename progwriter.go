@@ -4,22 +4,22 @@ import "io"
 
 type Writer struct {
 	io.Writer
-	Handler func(progress int64)
 
-	Throttler Throttler
+	handler   func(progress int64)
+	throttler Throttler
 
 	progress int64
 }
 
-func NewWriter(src io.Writer, handler func(progress int64), configs ...RWConfig) *Writer {
+func NewWriter(src io.Writer, handler func(progress int64), optThrottler ...Throttler) *Writer {
 	w := &Writer{
 		Writer:    src,
-		Handler:   handler,
-		Throttler: &nullThrottling{},
+		handler:   handler,
+		throttler: &nullThrottling{},
 	}
 
-	for _, c := range configs {
-		c(w)
+	if len(optThrottler) > 0 || optThrottler[0] != nil {
+		w.throttler = optThrottler[0]
 	}
 
 	return w
@@ -28,6 +28,6 @@ func NewWriter(src io.Writer, handler func(progress int64), configs ...RWConfig)
 func (r *Writer) Write(p []byte) (n int, err error) {
 	nn, ee := r.Writer.Write(p)
 	r.progress += int64(nn)
-	r.Throttler.CallHandler(r.Handler, r.progress)
+	r.throttler.CallHandler(r.handler, r.progress)
 	return nn, ee
 }
