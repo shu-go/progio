@@ -2,6 +2,7 @@ package progio
 
 import "io"
 
+// Reader a progress watcher and a wrapper for io.Reader.
 type Reader struct {
 	io.Reader
 	Handler func(progress int64)
@@ -11,6 +12,8 @@ type Reader struct {
 	progress int64
 }
 
+// NewReader creates a Reader with handler to handle progress.
+// configs is currently used to set Throttler property.
 func NewReader(src io.Reader, handler func(progress int64), configs ...RWConfig) *Reader {
 	r := &Reader{
 		Reader:    src,
@@ -25,6 +28,8 @@ func NewReader(src io.Reader, handler func(progress int64), configs ...RWConfig)
 	return r
 }
 
+// Read implements (io.Reader).Read.
+// It calls progress handler.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	nn, ee := r.Reader.Read(p)
 	r.progress += int64(nn)
