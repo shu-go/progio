@@ -11,9 +11,9 @@ type Writer struct {
 	progress int64
 }
 
-func NewWriter(src io.Writer, handler func(progress int64), optThrottler ...Throttler) *Writer {
+func NewWriter(dst io.Writer, handler func(progress int64), optThrottler ...Throttler) *Writer {
 	w := &Writer{
-		Writer:    src,
+		Writer:    dst,
 		handler:   handler,
 		throttler: &nullThrottling{},
 	}
