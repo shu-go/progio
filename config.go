@@ -9,11 +9,19 @@ type RWConfig func(rw interface{})
 //
 // This config CHANGES a handler parameter BYTES->PERCENT.
 func Percent(max int64, scale int) RWConfig {
+	if scale < 0 || 100 < scale {
+		panic("0 <= scale <= 100")
+	}
+	t := &percentThrottling{
+		Max:   max,
+		Scale: scale,
+	}
+
 	return func(rw interface{}) {
 		if r, ok := rw.(*Reader); ok {
-			r.Throttler = NewPercentThrottler(max, scale)
+			r.Throttler = t
 		} else if w, ok := rw.(*Writer); ok {
-			w.Throttler = NewPercentThrottler(max, scale)
+			w.Throttler = t
 		}
 	}
 }
@@ -27,9 +35,9 @@ func Time(d time.Duration) RWConfig {
 
 	return func(rw interface{}) {
 		if r, ok := rw.(*Reader); ok {
-			r.Throttler = NewTimeThrottler(d)
+			r.Throttler = t
 		} else if w, ok := rw.(*Writer); ok {
-			w.Throttler = NewTimeThrottler(d)
+			w.Throttler = t
 		}
 	}
 }
