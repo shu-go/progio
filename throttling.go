@@ -1,20 +1,26 @@
 package progio
 
-import "time"
+import (
+	"time"
+)
 
+// Throttler throttles handling of Reader/Writer progress.
 type Throttler interface {
-	CallHandler(func(int64), int64)
+	// CallHandler calls a progress handler if needed.
+	CallHandler(handler func(int64), progress int64)
 }
 
 type nullThrottling struct{}
 
-func (t *nullThrottling) CallHandler(handler func(int64), n int64) {
-	handler(n)
+func (t *nullThrottling) CallHandler(handler func(int64), p int64) {
+	handler(p)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 // Percent throttles progress handling by the scale(%).
+// Param max is the size of target Reader to calc percent.
+// e.g. response.ContentLength
 //
 // This throttler CHANGES a handler parameter BYTES->PERCENT.
 func Percent(max int64, scale int) Throttler {
@@ -34,14 +40,14 @@ type percentThrottling struct {
 	last int
 }
 
-func (t *percentThrottling) percentInScale(n int64) int {
-	return int(float64(n)/float64(t.max)*100/float64(t.scale)) * t.scale
+func (t *percentThrottling) percentInScale(p int64) int {
+	return int(float64(p)/float64(t.max)*100/float64(t.scale)) * t.scale
 }
 
-func (t *percentThrottling) CallHandler(handler func(int64), n int64) {
-	test := t.percentInScale(n)
+func (t *percentThrottling) CallHandler(handler func(int64), p int64) {
+	test := t.percentInScale(p)
 	if t.last+t.scale <= test {
-		handler( /*n*/ int64(test))
+		handler( /*p*/ int64(test))
 		t.last = test
 	}
 }
@@ -61,10 +67,10 @@ type timeThrottling struct {
 	last time.Time
 }
 
-func (t *timeThrottling) CallHandler(handler func(int64), n int64) {
+func (t *timeThrottling) CallHandler(handler func(int64), p int64) {
 	test := time.Now()
 	if t.last.Add(t.d).Before(test) {
-		handler(n)
+		handler(p)
 		t.last = test
 	}
 }
