@@ -18,7 +18,7 @@ func NewWriter(src io.Writer, handler func(progress int64), optThrottler ...Thro
 		throttler: &nullThrottling{},
 	}
 
-	if len(optThrottler) > 0 || optThrottler[0] != nil {
+	if len(optThrottler) > 0 && optThrottler[0] != nil {
 		w.throttler = optThrottler[0]
 	}
 
