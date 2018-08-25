@@ -2,7 +2,7 @@ package progio
 
 import "io"
 
-// Reader a progress watcher and a wrapper for io.Reader.
+// Reader a progress watcher and a wrapper of io.Reader.
 type Reader struct {
 	io.Reader
 

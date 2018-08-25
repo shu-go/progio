@@ -2,6 +2,7 @@ package progio
 
 import "io"
 
+// Writer a progress watcher and a wrapper of io.Writer.
 type Writer struct {
 	io.Writer
 
@@ -11,6 +12,8 @@ type Writer struct {
 	progress int64
 }
 
+// NewWriter creates a Writer with handler to handle progress.
+// optThrottler is used to throttle handler call.
 func NewWriter(dst io.Writer, handler func(progress int64), optThrottler ...Throttler) *Writer {
 	w := &Writer{
 		Writer:    dst,
@@ -25,6 +28,8 @@ func NewWriter(dst io.Writer, handler func(progress int64), optThrottler ...Thro
 	return w
 }
 
+// Write implements (io.Writer).Write.
+// It calls progress handler.
 func (r *Writer) Write(p []byte) (n int, err error) {
 	nn, ee := r.Writer.Write(p)
 	r.progress += int64(nn)
