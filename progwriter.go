@@ -1,6 +1,9 @@
 package progio
 
-import "io"
+import (
+	"io"
+	"time"
+)
 
 // Writer a progress watcher and a wrapper of io.Writer.
 type Writer struct {
@@ -10,6 +13,7 @@ type Writer struct {
 	throttler Throttler
 
 	progress int64
+	start    time.Time
 }
 
 // NewWriter creates a Writer with handler to handle progress.
@@ -31,8 +35,12 @@ func NewWriter(dst io.Writer, handler func(progress int64), optThrottler ...Thro
 // Write implements (io.Writer).Write.
 // It calls progress handler.
 func (r *Writer) Write(p []byte) (n int, err error) {
+	var zero time.Time
+	if r.start == zero {
+		r.start = time.Now()
+	}
 	nn, ee := r.Writer.Write(p)
 	r.progress += int64(nn)
-	r.throttler.CallHandler(r.handler, r.progress)
+	r.throttler.CallHandler(r.handler, r.progress, time.Now().Sub(r.start))
 	return nn, ee
 }

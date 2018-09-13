@@ -117,6 +117,68 @@ func TestReader(t *testing.T) {
 
 		gotwant.TestExpr(t, count, count <= 1)
 	})
+
+	t.Run("HandlerDuration", func(t *testing.T) {
+		t.Parallel()
+
+		buf := createBuffer()
+		defer buf.Close()
+
+		count := 0
+		r := progio.NewReader(
+			buf,
+			func(p int64, d time.Duration) {
+				time.Sleep(1 * time.Second)
+				gotwant.TestExpr(t, d, d >= time.Duration(count)*time.Second)
+				count++
+			},
+		)
+
+		_, err := ioutil.ReadAll(r)
+		gotwant.TestError(t, err, nil)
+	})
+
+	t.Run("HandlerDurationPercent", func(t *testing.T) {
+		t.Parallel()
+
+		buf := createBuffer()
+		defer buf.Close()
+
+		count := 0
+		r := progio.NewReader(
+			buf,
+			func(p int64, d time.Duration) {
+				time.Sleep(1 * time.Second)
+				gotwant.TestExpr(t, d, d >= time.Duration(count)*time.Second)
+				count++
+			},
+			progio.Percent(buf.Size(), 1),
+		)
+
+		_, err := ioutil.ReadAll(r)
+		gotwant.TestError(t, err, nil)
+	})
+
+	t.Run("HandlerDurationTime", func(t *testing.T) {
+		t.Parallel()
+
+		buf := createBuffer()
+		defer buf.Close()
+
+		count := 0
+		r := progio.NewReader(
+			buf,
+			func(p int64, d time.Duration) {
+				time.Sleep(1 * time.Second)
+				gotwant.TestExpr(t, d, d >= time.Duration(count)*time.Second)
+				count++
+			},
+			progio.Time(5),
+		)
+
+		_, err := ioutil.ReadAll(r)
+		gotwant.TestError(t, err, nil)
+	})
 }
 
 func TestWriter(t *testing.T) {
