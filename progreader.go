@@ -9,7 +9,7 @@ import (
 type Reader struct {
 	io.Reader
 
-	handlerCaller func(int64, time.Duration)
+	listenerCaller func(int64, time.Duration)
 
 	throttler Throttler
 
@@ -17,24 +17,25 @@ type Reader struct {
 	start    time.Time
 }
 
-// NewReader creates a Reader with handler to handle progress.
-// optThrottler is used to throttle handler call.
-func NewReader(src io.Reader, handler interface{}, optThrottler ...Throttler) *Reader {
+// NewReader creates a Reader with listener to handle progress.
+// listener is a progress listener function func(progress int64) or func(progress int64, duration time.Duration).
+// optThrottler is used to throttle listener call.
+func NewReader(src io.Reader, listener interface{}, optThrottler ...Throttler) *Reader {
 	r := &Reader{
 		Reader:    src,
 		throttler: &nullThrottling{},
 	}
 
-	if h, ok := handler.(func(int64)); ok {
-		r.handlerCaller = func(p int64, _ time.Duration) {
+	if h, ok := listener.(func(int64)); ok {
+		r.listenerCaller = func(p int64, _ time.Duration) {
 			h(p)
 		}
-	} else if h, ok := handler.(func(int64, time.Duration)); ok {
-		r.handlerCaller = func(p int64, d time.Duration) {
+	} else if h, ok := listener.(func(int64, time.Duration)); ok {
+		r.listenerCaller = func(p int64, d time.Duration) {
 			h(p, d)
 		}
 	} else {
-		r.handlerCaller = func(p int64, d time.Duration) {
+		r.listenerCaller = func(p int64, d time.Duration) {
 		}
 	}
 
@@ -46,7 +47,7 @@ func NewReader(src io.Reader, handler interface{}, optThrottler ...Throttler) *R
 }
 
 // Read implements (io.Reader).Read.
-// It calls progress handler.
+// It calls progress listener.
 func (r *Reader) Read(p []byte) (n int, err error) {
 	var zero time.Time
 	if r.start == zero {
@@ -54,6 +55,6 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	}
 	nn, ee := r.Reader.Read(p)
 	r.progress += int64(nn)
-	r.throttler.CallHandler(r.handlerCaller, r.progress, time.Now().Sub(r.start))
+	r.throttler.CallListener(r.listenerCaller, r.progress, time.Now().Sub(r.start))
 	return nn, ee
 }

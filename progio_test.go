@@ -118,7 +118,7 @@ func TestReader(t *testing.T) {
 		gotwant.TestExpr(t, count, count <= 1)
 	})
 
-	t.Run("HandlerDuration", func(t *testing.T) {
+	t.Run("ListenDuration", func(t *testing.T) {
 		t.Parallel()
 
 		buf := createBuffer()
@@ -138,7 +138,7 @@ func TestReader(t *testing.T) {
 		gotwant.TestError(t, err, nil)
 	})
 
-	t.Run("HandlerDurationPercent", func(t *testing.T) {
+	t.Run("ListenDurationPercent", func(t *testing.T) {
 		t.Parallel()
 
 		buf := createBuffer()
@@ -159,7 +159,7 @@ func TestReader(t *testing.T) {
 		gotwant.TestError(t, err, nil)
 	})
 
-	t.Run("HandlerDurationTime", func(t *testing.T) {
+	t.Run("ListenDurationTime", func(t *testing.T) {
 		t.Parallel()
 
 		buf := createBuffer()

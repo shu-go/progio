@@ -6,16 +6,16 @@ import (
 
 // Throttler throttles handling of Reader/Writer progress.
 type Throttler interface {
-	// CallHandler calls a progress handler if needed.
-	CallHandler(handler func(int64, time.Duration), progress int64, duration time.Duration)
+	// CallListener calls a progress listener if needed.
+	CallListener(listener func(int64, time.Duration), progress int64, duration time.Duration)
 }
 
 type nullThrottling struct {
 	duration time.Duration
 }
 
-func (t *nullThrottling) CallHandler(handler func(int64, time.Duration), p int64, d time.Duration) {
-	handler(p, d)
+func (t *nullThrottling) CallListener(listener func(int64, time.Duration), p int64, d time.Duration) {
+	listener(p, d)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24,7 +24,7 @@ func (t *nullThrottling) CallHandler(handler func(int64, time.Duration), p int64
 // Param max is the size of target Reader to calc percent.
 // e.g. response.ContentLength
 //
-// This throttler CHANGES a handler parameter BYTES->PERCENT.
+// This throttler CHANGES a listener parameter BYTES->PERCENT.
 func Percent(max int64, scale int) Throttler {
 	if scale < 0 || 100 < scale {
 		panic("0 <= scale <= 100")
@@ -46,10 +46,10 @@ func (t *percentThrottling) percentInScale(p int64) int {
 	return int(float64(p)/float64(t.max)*100/float64(t.scale)) * t.scale
 }
 
-func (t *percentThrottling) CallHandler(handler func(int64, time.Duration), p int64, d time.Duration) {
+func (t *percentThrottling) CallListener(listener func(int64, time.Duration), p int64, d time.Duration) {
 	test := t.percentInScale(p)
 	if t.last+t.scale <= test {
-		handler( /*p*/ int64(test), d)
+		listener( /*p*/ int64(test), d)
 	}
 	t.last = test
 }
@@ -69,10 +69,10 @@ type timeThrottling struct {
 	last time.Time
 }
 
-func (t *timeThrottling) CallHandler(handler func(int64, time.Duration), p int64, d time.Duration) {
+func (t *timeThrottling) CallListener(listener func(int64, time.Duration), p int64, d time.Duration) {
 	test := time.Now()
 	if t.last.Add(t.d).Before(test) {
-		handler(p, d)
+		listener(p, d)
 		t.last = test
 	}
 }
