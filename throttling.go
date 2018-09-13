@@ -7,19 +7,15 @@ import (
 // Throttler throttles handling of Reader/Writer progress.
 type Throttler interface {
 	// CallHandler calls a progress handler if needed.
-	CallHandler(handler interface{}, progress int64, duration time.Duration)
+	CallHandler(handler func(int64, time.Duration), progress int64, duration time.Duration)
 }
 
 type nullThrottling struct {
 	duration time.Duration
 }
 
-func (t *nullThrottling) CallHandler(handler interface{}, p int64, d time.Duration) {
-	if h, ok := handler.(func(int64)); ok {
-		h(p)
-	} else if h, ok := handler.(func(int64, time.Duration)); ok {
-		h(p, d)
-	}
+func (t *nullThrottling) CallHandler(handler func(int64, time.Duration), p int64, d time.Duration) {
+	handler(p, d)
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -50,16 +46,12 @@ func (t *percentThrottling) percentInScale(p int64) int {
 	return int(float64(p)/float64(t.max)*100/float64(t.scale)) * t.scale
 }
 
-func (t *percentThrottling) CallHandler(handler interface{}, p int64, d time.Duration) {
+func (t *percentThrottling) CallHandler(handler func(int64, time.Duration), p int64, d time.Duration) {
 	test := t.percentInScale(p)
 	if t.last+t.scale <= test {
-		if h, ok := handler.(func(int64)); ok {
-			h( /*p*/ int64(test))
-		} else if h, ok := handler.(func(int64, time.Duration)); ok {
-			h( /*p*/ int64(test), d)
-		}
-		t.last = test
+		handler( /*p*/ int64(test), d)
 	}
+	t.last = test
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -77,14 +69,10 @@ type timeThrottling struct {
 	last time.Time
 }
 
-func (t *timeThrottling) CallHandler(handler interface{}, p int64, d time.Duration) {
+func (t *timeThrottling) CallHandler(handler func(int64, time.Duration), p int64, d time.Duration) {
 	test := time.Now()
 	if t.last.Add(t.d).Before(test) {
-		if h, ok := handler.(func(int64)); ok {
-			h(p)
-		} else if h, ok := handler.(func(int64, time.Duration)); ok {
-			h(p, d)
-		}
+		handler(p, d)
 		t.last = test
 	}
 }

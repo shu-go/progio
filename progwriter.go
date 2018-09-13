@@ -9,7 +9,8 @@ import (
 type Writer struct {
 	io.Writer
 
-	handler   func(progress int64)
+	handlerCaller func(int64, time.Duration)
+
 	throttler Throttler
 
 	progress int64
@@ -18,11 +19,23 @@ type Writer struct {
 
 // NewWriter creates a Writer with handler to handle progress.
 // optThrottler is used to throttle handler call.
-func NewWriter(dst io.Writer, handler func(progress int64), optThrottler ...Throttler) *Writer {
+func NewWriter(dst io.Writer, handler interface{}, optThrottler ...Throttler) *Writer {
 	w := &Writer{
 		Writer:    dst,
-		handler:   handler,
 		throttler: &nullThrottling{},
+	}
+
+	if h, ok := handler.(func(int64)); ok {
+		w.handlerCaller = func(p int64, _ time.Duration) {
+			h(p)
+		}
+	} else if h, ok := handler.(func(int64, time.Duration)); ok {
+		w.handlerCaller = func(p int64, d time.Duration) {
+			h(p, d)
+		}
+	} else {
+		w.handlerCaller = func(p int64, d time.Duration) {
+		}
 	}
 
 	if len(optThrottler) > 0 && optThrottler[0] != nil {
@@ -34,13 +47,13 @@ func NewWriter(dst io.Writer, handler func(progress int64), optThrottler ...Thro
 
 // Write implements (io.Writer).Write.
 // It calls progress handler.
-func (r *Writer) Write(p []byte) (n int, err error) {
+func (w *Writer) Write(p []byte) (n int, err error) {
 	var zero time.Time
-	if r.start == zero {
-		r.start = time.Now()
+	if w.start == zero {
+		w.start = time.Now()
 	}
-	nn, ee := r.Writer.Write(p)
-	r.progress += int64(nn)
-	r.throttler.CallHandler(r.handler, r.progress, time.Now().Sub(r.start))
+	nn, ee := w.Writer.Write(p)
+	w.progress += int64(nn)
+	w.throttler.CallHandler(w.handlerCaller, w.progress, time.Now().Sub(w.start))
 	return nn, ee
 }
