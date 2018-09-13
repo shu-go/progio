@@ -23,21 +23,10 @@ type Writer struct {
 func NewWriter(dst io.Writer, listener interface{}, optThrottler ...Throttler) *Writer {
 	w := &Writer{
 		Writer:    dst,
-		throttler: &nullThrottling{},
+		throttler: nil, //&nullThrottling{},
 	}
 
-	if h, ok := listener.(func(int64)); ok {
-		w.listenerCaller = func(p int64, _ time.Duration) {
-			h(p)
-		}
-	} else if h, ok := listener.(func(int64, time.Duration)); ok {
-		w.listenerCaller = func(p int64, d time.Duration) {
-			h(p, d)
-		}
-	} else {
-		w.listenerCaller = func(p int64, d time.Duration) {
-		}
-	}
+	w.listenerCaller = makeListenerCaller(listener)
 
 	if len(optThrottler) > 0 && optThrottler[0] != nil {
 		w.throttler = optThrottler[0]
@@ -55,6 +44,10 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	}
 	nn, ee := w.Writer.Write(p)
 	w.progress += int64(nn)
-	w.throttler.CallListener(w.listenerCaller, w.progress, time.Now().Sub(w.start))
+	if w.throttler != nil {
+		w.throttler.CallListener(w.listenerCaller, w.progress, time.Now().Sub(w.start))
+	} else {
+		w.listenerCaller(w.progress, time.Now().Sub(w.start))
+	}
 	return nn, ee
 }

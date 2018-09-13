@@ -23,21 +23,10 @@ type Reader struct {
 func NewReader(src io.Reader, listener interface{}, optThrottler ...Throttler) *Reader {
 	r := &Reader{
 		Reader:    src,
-		throttler: &nullThrottling{},
+		throttler: nil, //&nullThrottling{},
 	}
 
-	if h, ok := listener.(func(int64)); ok {
-		r.listenerCaller = func(p int64, _ time.Duration) {
-			h(p)
-		}
-	} else if h, ok := listener.(func(int64, time.Duration)); ok {
-		r.listenerCaller = func(p int64, d time.Duration) {
-			h(p, d)
-		}
-	} else {
-		r.listenerCaller = func(p int64, d time.Duration) {
-		}
-	}
+	r.listenerCaller = makeListenerCaller(listener)
 
 	if len(optThrottler) > 0 && optThrottler[0] != nil {
 		r.throttler = optThrottler[0]
@@ -55,6 +44,24 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	}
 	nn, ee := r.Reader.Read(p)
 	r.progress += int64(nn)
-	r.throttler.CallListener(r.listenerCaller, r.progress, time.Now().Sub(r.start))
+	if r.throttler != nil {
+		r.throttler.CallListener(r.listenerCaller, r.progress, time.Now().Sub(r.start))
+	} else {
+		r.listenerCaller(r.progress, time.Now().Sub(r.start))
+	}
 	return nn, ee
+}
+
+func makeListenerCaller(listener interface{}) func(int64, time.Duration) {
+	if lsnr, ok := listener.(func(int64)); ok {
+		return func(p int64, _ time.Duration) {
+			lsnr(p)
+		}
+	} else if lsnr, ok := listener.(func(int64, time.Duration)); ok {
+		return func(p int64, d time.Duration) {
+			lsnr(p, d)
+		}
+	}
+	return func(p int64, d time.Duration) {
+	}
 }
